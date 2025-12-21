@@ -10,14 +10,19 @@ from config import CHATGPT_TOKEN
 chatgpt_service = ChatGPTService(CHATGPT_TOKEN)
 
 logging.basicConfig(
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    handlers=[
+        logging.FileHandler('bot.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
 )
 
 logger = logging.getLogger(__name__)
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info("Start command received")
+
     await send_image(update, context, "start")
     await send_text(update, context, load_message("start"))
     await show_main_menu(
@@ -30,3 +35,4 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'talk': 'Діалог з відомою особистістю',
         }
     )
+
