@@ -68,3 +68,29 @@ async def random_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await random(update, context)
     elif data == 'start':
         await start(update, context)
+
+async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    await send_image(update, context, "gpt")
+    chatgpt_service.set_prompt(load_prompt("gpt"))
+    await send_text(update, context, "Задайте питання ...")
+    context.user_data["conversation_state"] = "gpt"
+
+
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message_text = update.message.text
+    conversation_state = context.user_data.get("conversation_state")
+    if conversation_state == "gpt":
+        waiting_message = await send_text(update, context, "...")
+        try:
+            response = await chatgpt_service.add_message(message_text)
+            await send_text(update, context, response)
+        except Exception as e:
+            logger.error(f"Помилка при отриманні відповіді від ChatGPT: {e}")
+            await send_text(update, context, "Виникла помилка при обробці вашого повідомлення.")
+        finally:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=waiting_message.message_id
+            )
+
