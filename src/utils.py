@@ -47,7 +47,7 @@ async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, name: s
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="⚠️ Картинка временно недоступна"
+        text="⚠️ Картинка тимчасово недоступна"
     )
 
 
