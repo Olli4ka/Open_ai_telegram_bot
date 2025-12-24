@@ -39,7 +39,7 @@ async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, name: s
                     photo=image
                 )
 
-    # логируем, но НЕ падаем
+
     logger.warning(
         "Image '%s' not found in %s. Supported extensions: %s",
         name, images_dir, extensions
@@ -68,6 +68,18 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, com
 def load_prompt(name: str):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, 'resources', 'prompts', f'{name}.txt')
+    with open(prompt_path, "r", encoding="utf-8") as file:
+        return file.read()
+
+def load_translator_prompt(language_code: str) -> str:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt_path = os.path.join(
+        current_dir,
+        'resources',
+        'prompts',
+        'translator',
+        f'{language_code}.txt'
+    )
     with open(prompt_path, "r", encoding="utf-8") as file:
         return file.read()
 

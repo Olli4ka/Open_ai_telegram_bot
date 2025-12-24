@@ -4,7 +4,16 @@ from random import choice
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from utils import send_image, send_text, load_message, show_main_menu, load_prompt, send_text_buttons
+from utils import (
+    send_image,
+    send_text,
+    load_message,
+    show_main_menu,
+    load_prompt,
+    load_translator_prompt,
+    send_text_buttons,
+)
+
 from gpt import ChatGPTService
 from config import CHATGPT_TOKEN
 
@@ -34,6 +43,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'random': 'Дізнатися випадковий факт',
             'gpt': 'Запитати ChatGPT',
             'talk': 'Діалог з відомою особистістю',
+            'translator': 'Перекладач',
         }
     )
 
@@ -81,6 +91,7 @@ async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     conversation_state = context.user_data.get("conversation_state")
+
     if conversation_state == "gpt":
         waiting_message = await send_text(update, context, "...")
         try:
@@ -94,34 +105,82 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.effective_chat.id,
                 message_id=waiting_message.message_id
             )
+        return
+
     if conversation_state == "talk":
         personality = context.user_data.get("selected_personality")
-        if personality:
-            prompt = load_prompt(personality)
-            chatgpt_service.set_prompt(prompt)
-        else:
+        if not personality:
             await send_text(update, context, "Спочатку оберіть особистість для розмови!")
             return
+
+        prompt = load_prompt(personality)
+        chatgpt_service.set_prompt(prompt)
+
         waiting_message = await send_text(update, context, "...")
         try:
             response = await chatgpt_service.add_message(message_text)
             buttons = {"start": "Закінчити"}
             personality_name = personality.replace("talk_", "").replace("_", " ").title()
-            await send_text_buttons(update, context, f"{personality_name}: {response}", buttons)
+            await send_text_buttons(
+                update,
+                context,
+                f"{personality_name}: {response}",
+                buttons
+            )
         except Exception as e:
             logger.error(f"Помилка при отриманні відповіді від ChatGPT: {e}")
             await send_text(update, context, "Виникла помилка при отриманні відповіді!")
-            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=waiting_message.message_id)
         finally:
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id,
                 message_id=waiting_message.message_id
             )
-            if not conversation_state:
-                intent_recognized = await inter_random_input(update, context, message_text)
-                if not intent_recognized:
-                    await show_funny_response(update, context)
-                return
+        return
+
+    if conversation_state == "translator":
+        lang_code = context.user_data.get("lang_code")
+        lang_name = context.user_data.get("lang_name")
+
+        if not lang_code:
+            await send_text(update, context, "Спочатку оберіть мову перекладу.")
+            return
+
+        waiting_message = await send_text(update, context, "⏳ Перекладаю...")
+
+        try:
+            prompt = load_translator_prompt(lang_code)
+            chatgpt_service.set_prompt(prompt)
+
+            translated_text = await chatgpt_service.add_message(message_text)
+
+            buttons = {
+                "translator": "🔁 Змінити мову",
+                "start": "Закінчити"
+            }
+
+            await send_text_buttons(
+                update,
+                context,
+                f"🌍 Переклад ({lang_name}):\n\n{translated_text}",
+                buttons
+            )
+
+        except Exception as e:
+            logger.error(f"Translator error: {e}")
+            await send_text(update, context, "❌ Помилка при перекладі.")
+
+        finally:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=waiting_message.message_id
+            )
+
+        return
+
+    intent_recognized = await inter_random_input(update, context, message_text)
+    if not intent_recognized:
+        await show_funny_response(update, context)
+
 
 async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -161,35 +220,113 @@ async def talk_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             buttons
         )
 
-async def inter_random_input(update: Update, context: ContextTypes.DEFAULT_TYPE, message_text):
+async def translator(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    await send_image(update, context, "translator")
+
+    buttons = {
+        "translate_en": "English 🇬🇧",
+        "translate_uk": "Українська 🇺🇦",
+        "translate_de": "Deutsch 🇩🇪",
+        "start": "Закінчити",
+    }
+
+    await send_text_buttons(
+        update,
+        context,
+        "🌍 Оберіть мову перекладу:",
+        buttons,
+    )
+
+async def translator_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "start":
+        context.user_data.clear()
+        await start(update, context)
+        return
+
+    if query.data == "translator":
+        context.user_data.clear()
+        await translator(update, context)
+        return
+
+    language_map = {
+        "translate_en": ("en", "English"),
+        "translate_uk": ("uk", "Українська"),
+        "translate_de": ("de", "Deutsch"),
+    }
+
+    lang_code, lang_name = language_map[query.data]
+
+    context.user_data["conversation_state"] = "translator"
+    context.user_data["lang_code"] = lang_code
+    context.user_data["lang_name"] = lang_name
+
+    await send_text(
+        update,
+        context,
+        f"✏️ Надішліть текст для перекладу на {lang_name}:",
+    )
+
+async def inter_random_input(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    message_text: str
+) -> bool:
     message_text_lower = message_text.lower()
-    if any(keyword in message_text_lower for keyword in ['факт', 'цікав', 'random', 'випадков']):
+
+    if any(keyword in message_text_lower for keyword in [
+        'факт', 'цікав', 'random', 'випадков'
+    ]):
         await send_text(
             update,
             context,
-            text="Схоже, ви цікавитесь випадковими фактами! Зараз покажу вам один..."
+            "Схоже, ви цікавитесь випадковими фактами! Зараз покажу вам один..."
         )
         await random(update, context)
         return True
 
-    elif any(keyword in message_text_lower for keyword in ['gpt', 'чат', 'питання', 'запита', 'дізнатися']):
+    elif any(keyword in message_text_lower for keyword in [
+        'gpt', 'чат', 'питання', 'запита', 'дізнатися'
+    ]):
         await send_text(
             update,
             context,
-            text="Схоже, у вас є питання! Переходимо до режиму спілкування з ChatGPT..."
+            "Схоже, у вас є питання! Переходимо до режиму спілкування з ChatGPT..."
         )
         await gpt(update, context)
         return True
 
-    elif any(keyword in message_text_lower for keyword in ['розмов', 'говори', 'спілкува', 'особист', 'talk']):
+    elif any(keyword in message_text_lower for keyword in [
+        'розмов', 'говори', 'спілкува', 'особист', 'talk'
+    ]):
         await send_text(
             update,
             context,
-            text="Схоже, ви хочете поговорити з відомою особистістю! Зараз покажу вам доступні варіанти..."
+            "Схоже, ви хочете поговорити з відомою особистістю! Зараз покажу вам доступні варіанти..."
         )
         await talk(update, context)
         return True
+
+    elif any(keyword in message_text_lower for keyword in [
+        'переведи', 'перевод', 'переклади',
+        'translate', 'translation',
+        'на англий', 'на англій',
+        'на немец', 'на німец',
+        'translator'
+    ]):
+        await send_text(
+            update,
+            context,
+            "Схоже, ви хочете перекласти текст. Оберіть мову перекладу 👇"
+        )
+        await translator(update, context)
+        return True
+
     return False
+
 
 async def show_funny_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     funny_responses = [
