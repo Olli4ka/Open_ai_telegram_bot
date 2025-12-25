@@ -4,13 +4,14 @@ from random import choice
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from translator import translator, handle_translation
+
 from utils import (
     send_image,
     send_text,
     load_message,
     show_main_menu,
     load_prompt,
-    load_translator_prompt,
     send_text_buttons,
 )
 
@@ -69,7 +70,6 @@ async def random(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             message_id=message_to_delete.message_id
         )
-
 
 async def random_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -138,43 +138,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if conversation_state == "translator":
-        lang_code = context.user_data.get("lang_code")
-        lang_name = context.user_data.get("lang_name")
-
-        if not lang_code:
-            await send_text(update, context, "Спочатку оберіть мову перекладу.")
-            return
-
-        waiting_message = await send_text(update, context, "⏳ Перекладаю...")
-
-        try:
-            prompt = load_translator_prompt(lang_code)
-            chatgpt_service.set_prompt(prompt)
-
-            translated_text = await chatgpt_service.add_message(message_text)
-
-            buttons = {
-                "translator": "🔁 Змінити мову",
-                "start": "Закінчити"
-            }
-
-            await send_text_buttons(
-                update,
-                context,
-                f"🌍 Переклад ({lang_name}):\n\n{translated_text}",
-                buttons
-            )
-
-        except Exception as e:
-            logger.error(f"Translator error: {e}")
-            await send_text(update, context, "❌ Помилка при перекладі.")
-
-        finally:
-            await context.bot.delete_message(
-                chat_id=update.effective_chat.id,
-                message_id=waiting_message.message_id
-            )
-
+        await handle_translation(update, context)
         return
 
     intent_recognized = await inter_random_input(update, context, message_text)
@@ -219,56 +183,6 @@ async def talk_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\nYou can ask questions in your native language.",
             buttons
         )
-
-async def translator(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()
-    await send_image(update, context, "translator")
-
-    buttons = {
-        "translate_en": "English 🇬🇧",
-        "translate_uk": "Українська 🇺🇦",
-        "translate_de": "Deutsch 🇩🇪",
-        "start": "Закінчити",
-    }
-
-    await send_text_buttons(
-        update,
-        context,
-        "🌍 Оберіть мову перекладу:",
-        buttons,
-    )
-
-async def translator_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "start":
-        context.user_data.clear()
-        await start(update, context)
-        return
-
-    if query.data == "translator":
-        context.user_data.clear()
-        await translator(update, context)
-        return
-
-    language_map = {
-        "translate_en": ("en", "English"),
-        "translate_uk": ("uk", "Українська"),
-        "translate_de": ("de", "Deutsch"),
-    }
-
-    lang_code, lang_name = language_map[query.data]
-
-    context.user_data["conversation_state"] = "translator"
-    context.user_data["lang_code"] = lang_code
-    context.user_data["lang_name"] = lang_name
-
-    await send_text(
-        update,
-        context,
-        f"✏️ Надішліть текст для перекладу на {lang_name}:",
-    )
 
 async def inter_random_input(
     update: Update,
