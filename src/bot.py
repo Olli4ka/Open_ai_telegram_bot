@@ -13,10 +13,9 @@ from handlers import (
     random,
     random_button,
     gpt,
-    talk,
-    talk_button,
     message_handler,
 )
+from talk import talk, talk_button
 from translator import translator, translator_button, handle_translation
 
 
