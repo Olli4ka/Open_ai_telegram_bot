@@ -3,7 +3,14 @@ import logging
 
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram import Update, BotCommand, BotCommandScopeChat, MenuButtonCommands, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    BotCommand,
+    BotCommandScopeChat,
+    MenuButtonCommands,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +22,19 @@ def load_message(name: str) -> str:
         return file.read()
 
 
-async def send_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
-    text = text.encode('utf8').decode('utf8')
+async def send_text(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+):
+    text = text.encode("utf8").decode("utf8")
+
     return await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=reply_markup,
     )
 
 

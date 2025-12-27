@@ -4,6 +4,7 @@ from random import choice
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from resume import message_handler_resume
 from translator import translator, handle_translation
 from talk import talk
 from utils import (
@@ -45,6 +46,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'gpt': 'Запитати ChatGPT',
             'talk': 'Діалог з відомою особистістю',
             'translator': 'Перекладач',
+            'resume': 'Допомога в створенні резюме'
         }
     )
 
@@ -140,14 +142,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if conversation_state == "translator":
         await handle_translation(update, context)
         return
+    if conversation_state == "resume":
+        await message_handler_resume(update, context)
+        return
 
     intent_recognized = await inter_random_input(update, context, message_text)
     if not intent_recognized:
         await show_funny_response(update, context)
-
-
-
-
 
 
 async def inter_random_input(

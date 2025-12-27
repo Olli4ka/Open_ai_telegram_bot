@@ -17,6 +17,7 @@ from handlers import (
 )
 from talk import talk, talk_button
 from translator import translator, translator_button, handle_translation
+from resume import resume, message_handler_resume, resume_callback
 
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -26,6 +27,16 @@ app.add_handler(CommandHandler("random", random))
 app.add_handler(CommandHandler("gpt", gpt))
 app.add_handler(CommandHandler("talk", talk))
 app.add_handler(CommandHandler("translator", lambda update, context: translator(update, context, start_func=start)))
+app.add_handler(CommandHandler("resume", resume))
+
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler_resume))
+app.add_handler(
+    MessageHandler(filters.PHOTO | filters.Document.ALL, message_handler_resume)
+)
+app.add_handler(
+    CallbackQueryHandler(resume_callback, pattern="^resume_")
+)
+
 
 app.add_handler(
     CallbackQueryHandler(
