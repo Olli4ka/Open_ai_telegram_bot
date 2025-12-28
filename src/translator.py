@@ -19,6 +19,8 @@ chatgpt_service = ChatGPTService(CHATGPT_TOKEN)
 
 async def translator(update: Update, context: ContextTypes.DEFAULT_TYPE, start_func=None):
     context.user_data.clear()
+    context.user_data["conversation_state"] = "translator"
+
     await send_image(update, context, "translator")
 
     buttons = {

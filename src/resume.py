@@ -50,6 +50,8 @@ def resume_control_keyboard():
 
 async def resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
+    context.user_data["conversation_state"] = "resume"
+
     await send_image(update, context, "resume")
     context.user_data["state"] = "resume"
     context.user_data["step_index"] = 0

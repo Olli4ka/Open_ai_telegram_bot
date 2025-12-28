@@ -33,6 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
     logger.info("Start command received")
 
     await send_image(update, context, "start")
@@ -51,6 +52,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def random(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    context.user_data.pop("conversation_state", None)
     await send_image(update, context, "random")
     message_to_delete = await send_text(update, context, "Шукаю випадковий факт ...")
     try:
@@ -145,10 +148,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if conversation_state == "resume":
         await message_handler_resume(update, context)
         return
-
-    intent_recognized = await inter_random_input(update, context, message_text)
-    if not intent_recognized:
-        await show_funny_response(update, context)
+    if not conversation_state:
+        intent_recognized = await inter_random_input(update, context, message_text)
+        if not intent_recognized:
+            await show_funny_response(update, context)
+        return
 
 
 async def inter_random_input(

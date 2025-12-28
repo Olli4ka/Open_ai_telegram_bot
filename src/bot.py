@@ -29,36 +29,27 @@ app.add_handler(CommandHandler("talk", talk))
 app.add_handler(CommandHandler("translator", lambda update, context: translator(update, context, start_func=start)))
 app.add_handler(CommandHandler("resume", resume))
 
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler_resume))
-app.add_handler(
-    MessageHandler(filters.PHOTO | filters.Document.ALL, message_handler_resume)
-)
 app.add_handler(
     CallbackQueryHandler(resume_callback, pattern="^resume_")
 )
-
-
 app.add_handler(
     CallbackQueryHandler(
         lambda update, context: translator_button(update, context, start_func=start),
         pattern="^(translate_en|translate_uk|translate_de|translator|start)$"
     )
 )
-
 app.add_handler(
     CallbackQueryHandler(
         talk_button,
         pattern="^(talk_linus_torvalds|talk_guido_van_rossum|talk_mark_zuckerberg|start)$"
     )
 )
-
 app.add_handler(
     CallbackQueryHandler(
         random_button,
         pattern="^(random|start)$"
     )
 )
-
 app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
@@ -70,4 +61,3 @@ app.run_polling(
     drop_pending_updates=True,
     allowed_updates=Update.ALL_TYPES
 )
-

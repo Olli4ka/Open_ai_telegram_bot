@@ -12,6 +12,8 @@ chatgpt_service = ChatGPTService(CHATGPT_TOKEN)
 
 async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
+    context.user_data["conversation_state"] = "talk"
+
     await send_image(update, context, "talk")
     personalities = {
         'talk_linus_torvalds': "Linus Torvalds (Linux, Git)",
