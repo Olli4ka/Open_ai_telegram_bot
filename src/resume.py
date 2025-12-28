@@ -53,7 +53,6 @@ async def resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["conversation_state"] = "resume"
 
     await send_image(update, context, "resume")
-    context.user_data["state"] = "resume"
     context.user_data["step_index"] = 0
     context.user_data["resume_data"] = {}
     await send_text(
@@ -64,7 +63,7 @@ async def resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def message_handler_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.user_data.get("state") != "resume":
+    if context.user_data.get("conversation_state") != "resume":
         return False
 
     step_index = context.user_data.get("step_index", 0)
@@ -122,7 +121,7 @@ async def message_handler_resume(update: Update, context: ContextTypes.DEFAULT_T
                 InputFile(pdf_file, filename="resume.pdf")
             )
     except Exception as e:
-        logger.exception("Ошибка при создании резюме")
+        logger.exception("Помилка при створенні резюме")
         await send_text(update, context, "❌ Помилка при створенні резюме.")
     finally:
         context.user_data.clear()

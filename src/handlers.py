@@ -94,17 +94,20 @@ async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = update.message.text
     conversation_state = context.user_data.get("conversation_state")
+
+    if not update.message or not update.message.text:
+        if conversation_state == "resume":
+            await message_handler_resume(update, context)
+        return
+
+    message_text = update.message.text
 
     if conversation_state == "gpt":
         waiting_message = await send_text(update, context, "...")
         try:
             response = await chatgpt_service.add_message(message_text)
             await send_text(update, context, response)
-        except Exception as e:
-            logger.error(f"Помилка при отриманні відповіді від ChatGPT: {e}")
-            await send_text(update, context, "Виникла помилка при обробці вашого повідомлення.")
         finally:
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id,
@@ -124,17 +127,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         waiting_message = await send_text(update, context, "...")
         try:
             response = await chatgpt_service.add_message(message_text)
-            buttons = {"start": "Закінчити"}
-            personality_name = personality.replace("talk_", "").replace("_", " ").title()
-            await send_text_buttons(
-                update,
-                context,
-                f"{personality_name}: {response}",
-                buttons
-            )
-        except Exception as e:
-            logger.error(f"Помилка при отриманні відповіді від ChatGPT: {e}")
-            await send_text(update, context, "Виникла помилка при отриманні відповіді!")
+            await send_text(update, context, response)
         finally:
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id,
@@ -145,14 +138,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if conversation_state == "translator":
         await handle_translation(update, context)
         return
+
     if conversation_state == "resume":
         await message_handler_resume(update, context)
         return
-    if not conversation_state:
-        intent_recognized = await inter_random_input(update, context, message_text)
-        if not intent_recognized:
-            await show_funny_response(update, context)
-        return
+
+    intent_recognized = await inter_random_input(update, context, message_text)
+    if not intent_recognized:
+        await show_funny_response(update, context)
 
 
 async def inter_random_input(

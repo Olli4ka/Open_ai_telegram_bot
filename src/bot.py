@@ -52,11 +52,10 @@ app.add_handler(
 )
 app.add_handler(
     MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
+        filters.TEXT | filters.PHOTO | filters.Document.ALL,
         message_handler
     )
 )
-
 app.run_polling(
     drop_pending_updates=True,
     allowed_updates=Update.ALL_TYPES
